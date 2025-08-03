@@ -1,11 +1,9 @@
-#CI项目
 name: CWRT-ALL
 
-#CI计划
 on:
-  #自动编译：早上6点
+  #Build Every Tuesday at 3:00 AM
   schedule:
-    - cron: 0 22 * * 0
+    - cron: 0 3 * * 2
   #手动编译
   workflow_dispatch:
     inputs:
@@ -57,17 +55,17 @@ jobs:
       #编译配置
       WRT_CONFIG: ${{matrix.CONFIG}}
       #默认主题
-      WRT_THEME: argon
+      WRT_THEME: bootstrap
       #默认主机名
-      WRT_NAME: CWRT
+      WRT_NAME: OpenWrt
       #默认WIFI名称
-      WRT_SSID: CWRT
+      WRT_SSID: OpenWrt
       #默认WIFI密码
       WRT_WORD: 12345678
       #默认地址
-      WRT_IP: 192.168.10.1
+      WRT_IP: 192.168.6.1
       #默认密码，仅作提示，修改无用
-      WRT_PW: 无
+      WRT_PW: No Password
       #源码链接
       WRT_REPO: https://github.com/${{matrix.REPO_INFO.SOURCE}}.git
       #源码分支

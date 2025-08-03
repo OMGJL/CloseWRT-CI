@@ -1,26 +1,26 @@
 # CloseWRT-CI
-云编译CloseWRT固件
+Compile Padavan's Immortal WRT Firmware
 
-PADAVANONLY-24.10源码：
+PADAVANONLY-24.10
 https://github.com/padavanonly/immortalwrt-mt798x-24.10.git
 
-# 注意：
+# Note:
 
-本项目仅支持编译带有defconfig目录的MTK SDK闭源项目。
+This project only supports compiling closed-source MTK SDK projects that contain a defconfig directory.
 
 # 固件简要说明：
 
-固件每天早上4点自动编译。
+The firmware is automatically compiled at 3 AM every Tuesday.
 
-固件信息里的时间为编译开始的时间，方便核对上游源码提交时间。
+The time shown in the firmware information is the build start time, which helps to verify the upstream source code commit time.
 
-MEDIATEK系列，配套的UBOOT：
+For the MEDIATEK series, the corresponding UBOOT can be found at:
 https://github.com/VIKINGYFY/UBOOT-CI/releases
 
 # 目录简要说明：
 
-workflows——自定义CI配置
+workflows — Custom CI configurations
 
-Scripts——自定义脚本
+Scripts — Custom scripts
 
-Config——自定义配置
+Config — Custom configurations

@@ -183,6 +183,7 @@ CONFIG_PACKAGE_kmod-ebtables-ipv4=y
 CONFIG_PACKAGE_kmod-ebtables-ipv6=y
 CONFIG_PACKAGE_kmod-fs-autofs4=y
 CONFIG_PACKAGE_kmod-fs-vfat=y
+CONFIG_PACKAGE_kmod-ifb=y
 CONFIG_PACKAGE_kmod-inet-diag=y
 CONFIG_PACKAGE_kmod-ip6tables-extra=y
 CONFIG_PACKAGE_kmod-ipt-compat-xtables=y
@@ -212,6 +213,7 @@ CONFIG_PACKAGE_kmod-nls-base=y
 CONFIG_PACKAGE_kmod-nls-cp437=y
 CONFIG_PACKAGE_kmod-nls-iso8859-1=y
 CONFIG_PACKAGE_kmod-nls-utf8=y
+CONFIG_PACKAGE_kmod-sched-core=y
 CONFIG_PACKAGE_kmod-scsi-core=y
 CONFIG_PACKAGE_kmod-tcp-bbr=y
 CONFIG_PACKAGE_kmod-tun=y
@@ -223,6 +225,7 @@ CONFIG_PACKAGE_libblkid=y
 CONFIG_PACKAGE_libcap-ng=y
 CONFIG_PACKAGE_libcbor=y
 CONFIG_PACKAGE_libevdev=y
+CONFIG_PACKAGE_wifi-scripts=y
 CONFIG_PACKAGE_libfido2=y
 CONFIG_PACKAGE_libipset=y
 CONFIG_PACKAGE_libkvcutil=y
@@ -238,9 +241,9 @@ CONFIG_PACKAGE_libpcap=y
 CONFIG_PACKAGE_libstdcpp=y
 CONFIG_PACKAGE_libudev-zero=y
 CONFIG_PACKAGE_libuuid=y
+CONFIG_PACKAGE_lua-cjson=y
 CONFIG_PACKAGE_luci-app-eqos-mtk=y
 CONFIG_PACKAGE_luci-app-mtwifi-cfg=y
-CONFIG_PACKAGE_lua-cjson=y
 # CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy is not set
 # CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client is not set
 # CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client is not set
@@ -255,7 +258,6 @@ CONFIG_PACKAGE_lua-cjson=y
 # CONFIG_PACKAGE_luci-app-rclone_INCLUDE_rclone-webui is not set
 # CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ChinaDNS_NG is not set
 CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_NONE_V2RAY=y
-CONFIG_PACKAGE_wifi-scripts=y
 # CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_ShadowsocksR_Libev_Client is not set
 CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_NONE_Client=y
 CONFIG_PACKAGE_luci-app-ssr-plus_INCLUDE_Shadowsocks_NONE_Server=y
@@ -269,9 +271,6 @@ CONFIG_PACKAGE_luci-app-wrtbwmon=y
 # CONFIG_PACKAGE_luci-app-vssr_INCLUDE_Trojan is not set
 # CONFIG_PACKAGE_luci-app-vssr_INCLUDE_Xray is not set
 # CONFIG_PACKAGE_luci-app-vssr_INCLUDE_Xray_plugin is not set
-CONFIG_PACKAGE_luci-i18n-mtwifi-cfg-zh-cn=y
-CONFIG_PACKAGE_luci-i18n-turboacc-mtk-zh-cn=y 
-CONFIG_PACKAGE_luci-theme-argon=y
 CONFIG_PACKAGE_luci-theme-bootstrap-mod=y
 CONFIG_PACKAGE_mii_mgr=y 
 CONFIG_PACKAGE_mtkhqos_util=y
@@ -284,6 +283,8 @@ CONFIG_PACKAGE_regs=y
 CONFIG_PACKAGE_resolveip=y
 # CONFIG_PACKAGE_swconfig is not set
 CONFIG_PACKAGE_switch=y
+CONFIG_PACKAGE_tc-mod-iptables=y
+CONFIG_PACKAGE_tc-tiny=y
 CONFIG_PACKAGE_tcpdump=y
 CONFIG_PACKAGE_terminfo=y
 CONFIG_PACKAGE_wifi-dats=y

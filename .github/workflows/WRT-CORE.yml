@@ -234,24 +234,22 @@ jobs:
           tag_name: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${{env.WRT_BRANCH}}-${{env.WRT_DATE}}
           files: ./wrt/upload/*.*
           body: |
-            这是个平台固件包，内含多个设备！
-            请注意选择你需要的设备固件！
-            不要问，刷就完事了！
+            Contains most of the supported devices
+            in MediaTek MT7981/MT7986 platform
+            With MediaTek proprietary drivers and firmware blobs.
 
-            全系带闭源硬件加速，别问了！
+            Source：${{env.WRT_REPO}}
+            Branch：${{env.WRT_BRANCH}}
+            Commit：${{env.WRT_HASH}}
 
-            源码：${{env.WRT_REPO}}
-            分支：${{env.WRT_BRANCH}}
-            提交：${{env.WRT_HASH}}
+            Config：${{env.WRT_CONFIG}}
+            Target：${{env.WRT_TARGET}}
 
-            配置：${{env.WRT_CONFIG}}
-            平台：${{env.WRT_TARGET}}
+            Login IP：${{env.WRT_IP}}
+            Password：${{env.WRT_PW}}
 
-            登录地址：${{env.WRT_IP}}
-            登录密码：${{env.WRT_PW}}
+            WIFI SSID：${{env.WRT_SSID}}
+            WIFI Password：${{env.WRT_WORD}}
 
-            WIFI名称：${{env.WRT_SSID}}
-            WIFI密码：${{env.WRT_WORD}}
-
-            内核版本：${{env.WRT_KVER}}
-            插件列表：${{env.WRT_LIST}}
+            Kernel Version：${{env.WRT_KVER}}
+            List of Plugins：${{env.WRT_LIST}}

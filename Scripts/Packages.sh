@@ -71,6 +71,10 @@ UPDATE_PACKAGE() {
 # UPDATE_PACKAGE "viking" "VIKINGYFY/packages" "main" "" "luci-app-timewol luci-app-wolplus"
 # UPDATE_PACKAGE "vnt" "lmq8267/luci-app-vnt" "main"
 
+# updating adguardhome from mainline OpenWrt instead of immortalwrt repo, due to the one on immortalwrt repo have broken init.d script.
+UPDATE_PACKAGE "adguardhome" "openwrt/packages" "master" "pkg"
+
+
 #更新软件包版本
 UPDATE_VERSION() {
 	local PKG_NAME=$1

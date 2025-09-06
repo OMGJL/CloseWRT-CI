@@ -1,39 +1,8 @@
-# My Build will be mostly vanallia, hence there's no additional packages except AdguardHome. All Update/Install packages are commented out.
-#!/bin/bash
-
-# --- AdGuard Home Override ---
-# The default AdGuard Home package in the source feed is broken.
-# We will remove it and download the latest stable version from the official OpenWrt repository.
-
-echo "[AGH Override] Searching for and removing broken AdGuard Home package..."
-# This script runs from 'wrt/package/', so we search in '../feeds'
-find ../feeds -maxdepth 4 -type d -name "adguardhome" -exec rm -rf {} +
-echo "[AGH Override] Broken package removed."
-
-echo "[AGH Override] Downloading official AdGuard Home package..."
-# We use git sparse-checkout for a surgical download into a temporary directory
-git clone --depth=1 --filter=blob:none --sparse https://github.com/openwrt/packages.git ../adguardhome_tmp
-(
-  # Navigate into the temporary directory
-  cd ../adguardhome_tmp && \
-  # Configure sparse checkout to only pull the 'net/adguardhome' directory
-  git sparse-checkout set net/adguardhome && \
-  # Move the wanted package directory into the correct build location ('wrt/package/')
-  mv net/adguardhome ../package/ && \
-  # Clean up: exit the temp directory and remove it
-  cd .. && \
-  rm -rf adguardhome_tmp
-)
-echo "[AGH Override] Official AdGuard Home package is ready for build."
-
-# --- End of AdGuard Home Override ---
-
+# My Build will be mostly vanallia, hence there's no additional packages, All Update/Install packages are commented out.
 
 # You can add other custom package commands below this line
 # For example:
 # git clone https://github.com/example/luci-app-example.git
-
-echo "--- [Custom Packages] Finished ---"
 
 #安装和更新软件包
 UPDATE_PACKAGE() {

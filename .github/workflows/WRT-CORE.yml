@@ -150,6 +150,11 @@ jobs:
             echo "caches cleanup done!"
           fi
 
+      - name: Override AdGuardHome Feed
+        run: |
+          cd ./wrt/
+          $GITHUB_WORKSPACE/Scripts/FeedOverride.sh
+          
       - name: Update Feeds
         run: |
           cd ./wrt/

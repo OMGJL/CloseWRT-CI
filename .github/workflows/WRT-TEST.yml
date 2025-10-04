@@ -13,6 +13,7 @@ on:
         options:
           - MT7981
           - MT7986
+          - MT7986-HiPWR
           - TEST
       SOURCE:
         default: 'padavanonly/immortalwrt-mt798x-6.6'

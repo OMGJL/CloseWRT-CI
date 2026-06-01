@@ -76,6 +76,21 @@ if [ -f "$RUST_FILE" ]; then
 	cd $PKG_PATH && echo "rust has been fixed!"
 fi
 
+#Fix hardware eFuse country code lock
+#The MTK closed-source SDK's Config_Effuse_Country() reads the CN country code from
+#the factory flash and overwrites the dat file settings at driver init, also setting
+#EEPROM_IS_PROGRAMMED which blocks subsequent iwpriv changes. Disabling this call
+#lets the country code be fully controlled by software (UCI/LuCI).
+EEPROM_FILE="./mtk/drivers/mt_wifi/src/mt_wifi/embedded/common/eeprom.c"
+if [ -f "$EEPROM_FILE" ]; then
+	echo " "
+
+	# Disable the eFuse country override: comment out Config_Effuse_Country() call
+	sed -i 's/ops->Config_Effuse_Country(pAd)/\/* ops->Config_Effuse_Country(pAd) disabled: allow software country code control *\//g' $EEPROM_FILE
+
+	cd $PKG_PATH && echo "eFuse country lock has been disabled!"
+fi
+
 # #修复DiskMan编译失败
 # DM_FILE="./luci-app-diskman/applications/luci-app-diskman/Makefile"
 # if [ -f "$DM_FILE" ]; then

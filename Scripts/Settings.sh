@@ -14,6 +14,14 @@ sed -i "s/ImmortalWrt/$WRT_SSID/g" $WIFI_FILE
 sed -i "s/encryption=.*/encryption='psk2+ccmp'/g" $WIFI_FILE
 #修改WIFI密码
 sed -i "/set wireless.default_\${dev}.encryption='psk2+ccmp'/a \\\t\t\t\t\t\set wireless.default_\${dev}.key='$WRT_WORD'" $WIFI_FILE
+#Change default country code from CN to AU
+sed -i 's/\.country=CN/.country=AU/' $WIFI_FILE
+
+#Fix AU 5GHz region mapping
+#Region 0 = channels 36-64 + 149-165 (missing DFS band 100-140)
+#Region 7 = channels 36-64 + 100-140 + 149-165 (full AU channel plan)
+DEFS_FILE="./package/mtk/applications/mtwifi-cfg/files/mtwifi-cfg/mtwifi_defs.lua"
+sed -i 's/\["AU"\] = { 1, 0 }/["AU"] = { 1, 7 }/' $DEFS_FILE
 
 CFG_FILE="./package/base-files/files/bin/config_generate"
 #修改默认IP地址

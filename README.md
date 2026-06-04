@@ -86,6 +86,13 @@ household, not a definitive teardown — the **fixes below are what empirically 
 **root-cause explanations are best-effort guesses** and are flagged as such. None of this is specific to the
 MTK SDK — the DNS bits apply to vanilla OpenWrt + AdGuard Home too.
 
+> **Terminology — read this first.** In every example below, **`iot` is the name of a dedicated firewall
+> zone / network we created** just for smart-home gear (subnet `192.168.5.0/24`, router IP `192.168.5.1`,
+> Wi-Fi VAP `<iot-vap>`). Those names are **specific to our setup**. Wherever you see `iot`, `192.168.5.x`,
+> or `<iot-vap>`, substitute **your own** zone name / subnet / interface. You don't strictly need a separate
+> IoT network, but having one is what lets the per-subnet DNS rules below stay clean and not touch your main
+> LAN.
+
 ### 1. Device sends DNS to a stale/foreign resolver (Tuya, e.g. Kogan aircon)
 We saw a Tuya aircon keep querying a DNS server that wasn't on our network — it looked like an address left
 over from the phone hotspot it was last paired on (a carrier CGNAT `10.x`). On the router those queries went
@@ -113,15 +120,18 @@ After this the device came online immediately instead of waiting.
 
 ### 2. AdGuard Home + IPv6 AAAA when the WAN has no IPv6  (applies to vanilla OpenWrt too)
 If your WAN has **no working IPv6** (`ifstatus wan6` → `"up": false`) but the LAN still advertises IPv6 RA,
-an IPv6-capable IoT device can resolve a cloud domain's **AAAA** record (AdGuard Home serves AAAA by
-default), try to reach it over IPv6, and stall because there's no route out. We observed a Tuya device
-"connect briefly then drop" with a roughly periodic self-deauth in this state; it was fine on a phone hotspot,
-which hands out plain IPv4. We can't claim this is the only factor, but blocking AAAA for the IoT subnet
-resolved it for us, and it's a low-risk thing to try.
+an IPv6-capable IoT device may try the cloud over **IPv6 first** and stall because there's no route out.
+AdGuard Home doesn't strip AAAA (IPv6) records unless you tell it to, so the device keeps receiving an IPv6
+answer it then prefers. We observed a Tuya device "connect briefly then drop" with a roughly periodic
+self-deauth in this state; it was fine on a phone hotspot, which hands out plain IPv4. We can't claim IPv6 is
+the only factor, but steering the IoT devices onto IPv4 for DNS resolved it for us and is low-risk to try.
 
-**The fix we settled on — keep IPv6 RA on, but make AdGuard return empty AAAA (NODATA) for the IoT subnet
-only.** Devices still get an IPv6 address, but only ever reach the cloud over IPv4; the main LAN keeps full
-IPv6. In AdGuard Home → *Filters → Custom filtering rules*, add (swap in your IoT subnet):
+You have two ways to keep the IoT devices on IPv4 for the cloud:
+- **Blunt (whole network):** turn off IPv6 resolving in AdGuard Home — *Settings → DNS settings → "Disable
+  resolving of IPv6 addresses"* (`aaaa_disabled: true`). Simple, but it kills AAAA for **every** client.
+- **Narrow (what we did):** make AdGuard return empty AAAA (NODATA) for the **IoT subnet only**, so the main
+  LAN keeps full IPv6. Keep IPv6 RA on (devices still get an address); they just can't resolve a cloud AAAA.
+  In AdGuard Home → *Filters → Custom filtering rules*, add (swap in your IoT subnet):
 ```
 /.*/$client=192.168.5.0/24,dnstype=AAAA,dnsrewrite=NOERROR
 ```
@@ -132,8 +142,6 @@ nslookup -type=A    a1.tuyaeu.com 192.168.5.1   # returns IPv4  (works)
 ```
 > Editing `/etc/adguardhome.yaml` by hand? **Stop AdGuard first** (`service adguardhome stop`) — it rewrites
 > the file on shutdown and will overwrite your edit. Add the rule under `user_rules:`, then start it again.
-> The global `aaaa_disabled: true` works too but disables IPv6 DNS for your **whole** network — the
-> client-scoped rule above is narrower.
 
 ### 3. A logger that wouldn't work without IPv6 RA (Deye/Solarman) — mechanism unclear
 Counter-intuitively, our Deye solar logger did the **opposite** of the Tuya devices. With IPv6 fully disabled

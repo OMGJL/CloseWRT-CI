@@ -76,3 +76,90 @@ nft delete table inet dnsmasq
 /etc/init.d/firewall restart
 /etc/init.d/dnsmasq restart
 ```
+
+## IoT / Smart-Home Devices (Tuya/Smart-Life, Deye/Solarman, etc.)
+
+Some cheap IoT Wi-Fi modules (Tuya/Smart-Life on ESP/lwIP, Deye/Solarman solar loggers, …) behaved oddly on
+this firmware: they associate to the AP fine, but are slow or unreliable to come online / reach their cloud —
+while connecting quickly to a phone hotspot or a "dumb" range extender. These are notes from one real
+household, not a definitive teardown — the **fixes below are what empirically worked for us**; some of the
+**root-cause explanations are best-effort guesses** and are flagged as such. None of this is specific to the
+MTK SDK — the DNS bits apply to vanilla OpenWrt + AdGuard Home too.
+
+### 1. Device sends DNS to a stale/foreign resolver (Tuya, e.g. Kogan aircon)
+We saw a Tuya aircon keep querying a DNS server that wasn't on our network — it looked like an address left
+over from the phone hotspot it was last paired on (a carrier CGNAT `10.x`). On the router those queries went
+unanswered, so it couldn't resolve the Tuya cloud. Check with:
+```
+cat /proc/net/nf_conntrack | grep <device-ip>   # e.g. dst=10.x.x.x dport=53 [UNREPLIED]
+```
+We don't know how long the device would have clung to that stale resolver — quite possibly it would have
+recovered on its own once some internal cache/lease expired, and we simply weren't patient enough. Either
+way, the reliable fix is to **redirect all IoT DNS to the local resolver** so it doesn't matter what server a
+device tries to use:
+```
+uci add firewall redirect
+uci set firewall.@redirect[-1].name='Force-IoT-DNS'
+uci set firewall.@redirect[-1].src='iot'                 # your IoT zone
+uci set firewall.@redirect[-1].proto='tcp udp'
+uci set firewall.@redirect[-1].src_dport='53'
+uci set firewall.@redirect[-1].dest_ip='192.168.5.1'     # this router's IoT-side IP (the DNS server)
+uci set firewall.@redirect[-1].dest_port='53'
+uci set firewall.@redirect[-1].target='DNAT'
+uci set firewall.@redirect[-1].family='ipv4'
+uci commit firewall && /etc/init.d/firewall reload
+```
+After this the device came online immediately instead of waiting.
+
+### 2. AdGuard Home + IPv6 AAAA when the WAN has no IPv6  (applies to vanilla OpenWrt too)
+If your WAN has **no working IPv6** (`ifstatus wan6` → `"up": false`) but the LAN still advertises IPv6 RA,
+an IPv6-capable IoT device can resolve a cloud domain's **AAAA** record (AdGuard Home serves AAAA by
+default), try to reach it over IPv6, and stall because there's no route out. We observed a Tuya device
+"connect briefly then drop" with a roughly periodic self-deauth in this state; it was fine on a phone hotspot,
+which hands out plain IPv4. We can't claim this is the only factor, but blocking AAAA for the IoT subnet
+resolved it for us, and it's a low-risk thing to try.
+
+**The fix we settled on — keep IPv6 RA on, but make AdGuard return empty AAAA (NODATA) for the IoT subnet
+only.** Devices still get an IPv6 address, but only ever reach the cloud over IPv4; the main LAN keeps full
+IPv6. In AdGuard Home → *Filters → Custom filtering rules*, add (swap in your IoT subnet):
+```
+/.*/$client=192.168.5.0/24,dnstype=AAAA,dnsrewrite=NOERROR
+```
+Verify (query sourced from the IoT subnet):
+```
+nslookup -type=AAAA a1.tuyaeu.com 192.168.5.1   # empty answer (blocked)
+nslookup -type=A    a1.tuyaeu.com 192.168.5.1   # returns IPv4  (works)
+```
+> Editing `/etc/adguardhome.yaml` by hand? **Stop AdGuard first** (`service adguardhome stop`) — it rewrites
+> the file on shutdown and will overwrite your edit. Add the rule under `user_rules:`, then start it again.
+> The global `aaaa_disabled: true` works too but disables IPv6 DNS for your **whole** network — the
+> client-scoped rule above is narrower.
+
+### 3. A logger that wouldn't work without IPv6 RA (Deye/Solarman) — mechanism unclear
+Counter-intuitively, our Deye solar logger did the **opposite** of the Tuya devices. With IPv6 fully disabled
+on the IoT network it would associate and get a DHCP lease but then sit **completely silent** (no DNS, no
+traffic at all — `tcpdump -i <iot-if>` showed nothing). Re-enabling IPv6 RA/SLAAC on that network and forcing
+a re-join brought it straight back to its cloud.
+
+We genuinely **don't have a confirmed explanation** for this, and there's an open contradiction we never
+resolved: the same logger works happily on a plain **IPv4-only range extender** with no IPv6 at all, yet on
+this router it only worked once IPv6 RA was present. So "this device requires IPv6" is too strong a
+conclusion — treat it as an observation specific to our setup. If you have an IPv6-aware logger misbehaving,
+it's worth trying RA **on** (combined with the AAAA block in #2, which keeps the IPv4-only devices safe):
+```
+# IoT network: advertise RA/SLAAC but stay ULA-only (no global prefix needed)
+uci set network.iot.ip6assign='64'
+uci set network.iot.delegate='0'
+uci set dhcp.iot.ra='server'
+uci commit network; uci commit dhcp
+/etc/init.d/network reload; /etc/init.d/odhcpd restart
+```
+
+### Misc IoT notes
+- First-time **Tuya pairing** sometimes failed directly on the router SSID; pairing the device against a phone
+  hotspot (same SSID/password) and then switching the hotspot off worked as a one-time workaround.
+- To nudge a stuck device into a clean re-join without physical access (mtwifi):
+  `iwpriv <iot-vap> set DisConnectSta=<MAC>`.
+- Harmless IoT-VAP comfort settings for fussy cheap chips (per-VAP, leaves main radios untouched): turn off
+  `ieee80211k`, `ieee80211r`, `ofdma_dl/ul`, `mumimo_dl/ul`, `amsdu` on the IoT `wifi-iface`. These didn't
+  fix anything on their own for us, but they don't hurt.

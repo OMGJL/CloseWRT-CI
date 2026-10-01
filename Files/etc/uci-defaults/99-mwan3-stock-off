@@ -1,0 +1,10 @@
+#!/bin/sh
+# mwan3 ships in the image for USB-tether failover, but its stock sample config
+# (wan + a non-existent "wanb", "balanced" policy) must not run on a fresh flash:
+# if tracking ever failed, its default last_resort makes all traffic unreachable.
+# Disable mwan3 only while the config is still that stock sample; a real config
+# kept across sysupgrade is left alone.
+if uci -q get mwan3.wanb >/dev/null && uci -q get mwan3.balanced >/dev/null; then
+	/etc/init.d/mwan3 disable
+fi
+exit 0

@@ -53,3 +53,10 @@ echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
 if [ -n "$WRT_PACKAGE" ]; then
 	echo -e "$WRT_PACKAGE" >> ./.config
 fi
+
+#Bake repo files (Files/ -> image rootfs, e.g. uci-defaults) into the firmware
+if [ -d "$GITHUB_WORKSPACE/Files" ]; then
+	mkdir -p ./files
+	cp -rf "$GITHUB_WORKSPACE/Files/." ./files/
+	echo "Custom files copied into ./files"
+fi

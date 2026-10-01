@@ -24,6 +24,8 @@ Scripts — Custom scripts
 
 Config — Custom configurations
 
+Files — Files baked into the firmware rootfs (copied to `./files` by Settings.sh)
+
 # Quirks:
 
 This firmware is built by padavanonly, who forked ImmortalWRT and added the MTK closed-source driver. As a result, it has inherited all of ImmortalWRT's quirks as well as padavanonly's own quirks.
@@ -171,3 +173,34 @@ uci commit network; uci commit dhcp
 - Harmless IoT-VAP comfort settings for fussy cheap chips (per-VAP, leaves main radios untouched): turn off
   `ieee80211k`, `ieee80211r`, `ofdma_dl/ul`, `mumimo_dl/ul`, `amsdu` on the IoT `wifi-iface`. These didn't
   fix anything on their own for us, but they don't hurt.
+
+## USB Phone Tethering as a Backup WAN (NBN-first failover)
+
+The image includes everything needed to plug a phone into the router's USB port and use its tethering as a **backup** WAN:
+
+| Package | Purpose |
+|---|---|
+| `kmod-usb-net-rndis`, `kmod-usb-net-cdc-ether` | Android USB tethering (RNDIS, most phones) |
+| `kmod-usb-net-cdc-ncm` | Android USB tethering on phones that use NCM instead of RNDIS |
+| `kmod-usb-net-ipheth`, `usbmuxd` | iPhone USB tethering (Personal Hotspot). usbmuxd does the "Trust This Computer" pairing; records are stored in `/etc/lockdown` and survive sysupgrade |
+| `mwan3`, `luci-app-mwan3`, `ip-full` | Health-checks each WAN and fails over / fails back. Status page: **Status → MultiWAN Manager** |
+
+Kernel modules **cannot** be added later with `opkg` on this image: the MTK SDK kernel has a different struct layout from official ImmortalWrt builds (same `6.6.x` vermagic, different offsets), so official kmods would load and then corrupt memory. Anything kernel-side must be built here.
+
+`Files/` is copied into the image rootfs at build time. `Files/etc/uci-defaults/99-mwan3-stock-off` disables mwan3 on a fresh flash while its config is still the package's stock sample (whose default `last_resort` would make traffic unreachable if tracking failed). A real mwan3 config kept across sysupgrade is not touched.
+
+### Router-side configuration (not part of the image)
+
+The behaviour lives in `/etc/config/{network,firewall,mwan3}` and `/etc/mwan3.user`, which are kept across sysupgrade. On a fresh flash, recreate it:
+
+- **network**: `usbwan` (proto `dhcp`, device `usb0`, metric `20`) for Android, and `iphonewan` (proto `dhcp`, device `eth2`, metric `30`) for iPhone. `ipheth` always names its interface `eth*`; on the XDR6088 `eth0`/`eth1` are taken, so the iPhone is `eth2`.
+- **firewall**: a separate zone `tether` (networks `usbwan iphonewan`, input/forward `REJECT`, `masq` + `mtu_fix`) with forwardings from the zones allowed to use mobile data (e.g. `lan`, `iot`). Zones with no forwarding into `tether` (e.g. `lan2`) simply have no internet while on the phone — no extra rules needed. Add an `Allow-DHCP-Renew` rule for `tether` (udp/68).
+- **mwan3**: one policy, `wan` member metric 1, `usbwan`/`iphonewan` members metric 2, `last_resort default` (fall back to the main table rather than blackholing), and a single IPv4 rule using it. Track `wan` with several public IPs every 5 s (`down 4` ≈ 20 s to fail over, `up 12` ≈ 60 s of clean checks before failing back) with `flush_conntrack connected disconnected`; track the phone links slowly (`interval 60`) to save mobile data.
+- **`/etc/mwan3.user`** (optional): take `wan6` down on `wan` `disconnected` and back up on `connected` (use `ubus call network.interface.wan6 up/down`, not `ifup`, which bounces an already-up interface), so LAN clients drop the NBN IPv6 prefix while on the phone.
+
+Gotchas found while setting this up:
+
+- Install-time: `opkg install mwan3` immediately enables and starts it with the stock sample config. When adding it by hand, use `IPKG_NO_SCRIPT=1 opkg install …` and start it yourself once configured.
+- WireGuard peers with an `endpoint_host` get a pinned host route via the WAN that was active at `ifup`, which bypasses mwan3 — the tunnel would stay on a dead NBN. Set `option nohostroute '1'` on the WireGuard interface (safe unless the tunnel carries a default route).
+- `/etc/init.d/network reload` does not apply changes to WireGuard *peer* sections; run `ifup <wg-interface>`.
+- Phones usually need USB tethering re-enabled after each replug; Android's developer option *Default USB configuration → USB tethering* makes it automatic. The router's USB port supplies ~0.9 A, so heavy tethering may only slow the battery drain rather than charge.

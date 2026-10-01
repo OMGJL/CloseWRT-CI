@@ -1,0 +1,22 @@
+#!/bin/sh
+# Give USB-tethering NICs a neutral name before anything brings them up.
+# MTK HNAT adopts devices named usb*/wwan*/rmnet*/eth2-4 (DT ext-devices-prefix)
+# as "external devices" and loops their RX TCP/UDP through the PPE tagged with
+# a 12-bit VLAN = ifindex; once ifindex > 4095 (long uptime, replugs) replies
+# are lost onto the LAN bridge. Under a neutral name HNAT ignores the device
+# and the CPU routes it normally, like the WireGuard "vpn" interface.
+[ "$ACTION" = "add" ] || exit 0
+drv="$(basename "$(readlink "/sys/class/net/$INTERFACE/device/driver" 2>/dev/null)")"
+case "$drv" in
+	rndis_host|cdc_ether|cdc_ncm) new=tether0 ;;
+	ipheth) new=iphone0 ;;
+	*) exit 0 ;;
+esac
+[ "$INTERFACE" = "$new" ] && exit 0
+if [ -e "/sys/class/net/$new" ]; then
+	logger -t tether-rename "$new already exists, leaving $INTERFACE ($drv) alone"
+	exit 0
+fi
+ip link set dev "$INTERFACE" down
+ip link set dev "$INTERFACE" name "$new" &&
+	logger -t tether-rename "renamed $INTERFACE ($drv) -> $new"

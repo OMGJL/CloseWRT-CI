@@ -1,4 +1,7 @@
 # CloseWRT-CI
+
+English | [简体中文](README.zh-CN.md)
+
 Compile Padavanonly's ImmortalWRT Firmware
 
 PADAVANONLY-24.10
@@ -188,6 +191,21 @@ The image includes everything needed to plug a phone into the router's USB port 
 Kernel modules **cannot** be added later with `opkg` on this image: the MTK SDK kernel has a different struct layout from official ImmortalWrt builds (same `6.6.x` vermagic, different offsets), so official kmods would load and then corrupt memory. Anything kernel-side must be built here.
 
 `Files/` is copied into the image rootfs at build time. `Files/etc/hotplug.d/net/05-tether-rename` renames tethering NICs so MTK HNAT leaves them alone (see gotchas). `Files/etc/uci-defaults/99-mwan3-stock-off` disables mwan3 on a fresh flash while its config is still the package's stock sample (whose default `last_resort` would make traffic unreachable if tracking failed). A real mwan3 config kept across sysupgrade is not touched.
+
+### How it behaves
+
+Once the router-side configuration below is in place:
+
+- **Normal operation:** all traffic uses the main WAN (NBN on `eth1`). A phone plugged into USB with tethering on is only a standby link. The router pings through it about once a minute (roughly 0.5 MB of mobile data a day) and sends nothing else over it.
+- **Failover:** when the main WAN has **no internet for about 20 seconds**, traffic moves to the phone. It doesn't matter whether the cable was unplugged, NBN is down, or the WAN got no DHCP lease. The router judges by pinging 1.1.1.1, 8.8.8.8 and 9.9.9.9 *through the WAN port itself*, not by link state. If no phone is tethering at that moment, there is simply no internet.
+- **Failback:** the main WAN keeps being tested in the background while the phone is in use. After **about 60 seconds of clean checks**, traffic moves back to it, **even if the phone is still plugged in and tethering**, to save mobile data.
+- **Each switch resets existing connections**, so they re-establish on the new path instead of hanging. Expect video calls and downloads to blip once.
+- **Who may use the phone** is decided by firewall forwardings into the `tether` zone. In our setup `lan` and `iot` may; `lan2` may not, so lan2 simply has no internet while on the phone.
+- **IPv6** only exists through the main WAN. While on the phone, `wan6` is taken down and the router stops advertising an IPv6 default route, so LAN devices fall back to IPv4. IPv6 comes back on failback.
+- **DNS keeps working:** AdGuard Home's upstreams are plain public resolvers (DNS-over-TLS to 1.1.1.1), which are reachable over the phone too.
+- **Inbound connections stop working on the phone.** Port forwards, WireGuard clients dialling home and DDNS are all affected, because mobile data sits behind carrier-grade NAT. A tunnel can survive if the *router* dials out to a server with a public IP and keepalive enabled; see the WireGuard gotcha below.
+- **The phone shows up as `tether0`, and an iPhone as `iphone0`, not as `usb0`/`eth2`.** `05-tether-rename` renames them the moment they are plugged in, because MTK's hardware NAT otherwise hijacks the phone's TCP/UDP traffic (see the HNAT gotcha below). After plugging in, it can take **30–60 seconds** before the MultiWAN page shows the phone link online. If the main WAN is completely down, traffic already flows through the phone during that time.
+- **Watching it:** LuCI → **Status → MultiWAN Manager** shows each link as online or offline and which one carries traffic (e.g. `wan (100%)` or `usbwan (100%)`).
 
 ### Router-side configuration (not part of the image)
 
